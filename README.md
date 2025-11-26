@@ -102,119 +102,256 @@ Developer → Docker Image → Push to ECR
 
 ---
 
-# 🧪 **7. LAB – Deploy a Docker App to AWS ECS (Fargate)**
-
-A simple hands-on lab to show in your seminar.
-
----
-
-## 🔹 **Step 1: Create a Simple App**
-
-**app.py**:
-
-```python
-from flask import Flask
-app = Flask(__name__)
-
-@app.route("/")
-def home():
-    return "Hello from ECS!"
-
-app.run(host="0.0.0.0", port=80)
-```
+Got it!
+Here is the **final README.md content**, fully formatted, clean, and ready for you to **copy & paste directly**.
 
 ---
 
-## 🔹 **Step 2: Create Dockerfile**
+# **AWS ECS — NGINX Lab (Using Amazon Linux CLI & ECR)**
 
-```dockerfile
-FROM python:3.9
-RUN pip install flask
-COPY . /app
-WORKDIR /app
-CMD ["python", "app.py"]
-```
+A straightforward, fixed-version lab to **pull `nginx:latest` on an Amazon Linux host, tag it, push to ECR, and deploy on ECS (Fargate)**.
+This version includes **all corrected commands** based on your errors.
 
-Build image:
+---
+
+## **Prerequisites**
+
+* AWS account
+* Amazon Linux EC2 (Amazon Linux 2023 or 2)
+* Docker installed
+* AWS CLI configured (or IAM role on EC2)
+* ECR repository (we will create if not exists)
+
+---
+
+# **0 — Check OS Version (important)**
 
 ```bash
-docker build -t ecs-demo .
+cat /etc/os-release
 ```
 
 ---
 
-## 🔹 **Step 3: Push Image to AWS ECR**
+# **1 — Install Docker**
 
-1. Go to ECR → Create Repository → `ecs-demo`
-2. Login to ECR:
+## **If Amazon Linux 2023:**
 
 ```bash
-aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin <aws_id>.dkr.ecr.ap-south-1.amazonaws.com
+sudo dnf update -y
+sudo dnf install docker -y
+sudo systemctl start docker
+sudo systemctl enable docker
+sudo usermod -aG docker ec2-user
 ```
 
-3. Tag and push:
+## **If Amazon Linux 2:**
 
 ```bash
-docker tag ecs-demo:latest <aws_id>.dkr.ecr.ap-south-1.amazonaws.com/ecs-demo:latest
-docker push <aws_id>.dkr.ecr.ap-south-1.amazonaws.com/ecs-demo:latest
+sudo yum update -y
+sudo amazon-linux-extras install docker -y
+sudo service docker start
+sudo usermod -aG docker ec2-user
+```
+
+Logout and login again.
+
+Check Docker:
+
+```bash
+docker ps
 ```
 
 ---
 
-## 🔹 **Step 4: Create ECS Cluster**
+# **2 — Configure AWS Credentials (if needed)**
 
-ECS Console → **Clusters → Create Cluster**
-Choose: **Fargate**
+If you saw this error earlier:
 
-Cluster name: `ecs-demo-cluster`
+```
+Unable to locate credentials
+```
 
----
+Run:
 
-## 🔹 **Step 5: Create Task Definition**
+```bash
+aws configure
+```
 
-Task Definitions → Create New:
+Enter:
 
-* Launch type: **Fargate**
-* CPU: **256**
-* Memory: **512**
-* Add Container:
-
-  * Image: your ECR image
-  * Port: **80**
-
-Save it.
+* Access Key ID
+* Secret Key
+* Region (us-east-1)
+* Output: json
 
 ---
 
-## 🔹 **Step 6: Create ECS Service**
+# **3 — Pull the NGINX Image (from Docker Hub)**
 
-Cluster → Create Service:
+```bash
+docker pull nginx:latest
+```
 
-* Launch type: Fargate
-* Number of tasks: **1**
+Verify:
 
-VPC & Network:
-
-* Select public subnets
-* Enable public IP
+```bash
+docker images
+```
 
 ---
 
-## 🔹 **Step 7: Test the App**
+# **4 — Create an ECR Repository (if not exists)**
 
-Go to:
-ECS → Tasks → Public IP
+```bash
+aws ecr describe-repositories --repository-names ecs-demo --region us-east-1 >/dev/null 2>&1 || \
+aws ecr create-repository --repository-name ecs-demo --region us-east-1
+```
 
-Open in browser:
+---
+
+# **5 — Login to ECR (Correct Syntax)**
+
+```bash
+aws ecr get-login-password --region us-east-1 \
+| docker login --username AWS --password-stdin 526888234336.dkr.ecr.us-east-1.amazonaws.com
+```
+
+You should see:
+
+```
+Login Succeeded
+```
+
+---
+
+# **6 — Tag the Local Image With ECR Repo URI**
+
+```bash
+docker tag nginx:latest 526888234336.dkr.ecr.us-east-1.amazonaws.com/ecs-demo:latest
+```
+
+Check tags:
+
+```bash
+docker images
+```
+
+---
+
+# **7 — Push Image to ECR**
+
+```bash
+docker push 526888234336.dkr.ecr.us-east-1.amazonaws.com/ecs-demo:latest
+```
+
+---
+
+# **8 — Create ECS Cluster (Fargate)**
+
+AWS Console → ECS → Clusters → Create Cluster
+
+* **Networking Only (Fargate)**
+* Name: `ecs-nginx-cluster`
+
+---
+
+# **9 — Create ECS Task Definition**
+
+Task Definitions → Create New
+
+* **Launch Type:** Fargate
+* **CPU:** 256
+* **Memory:** 512
+* **Add container**
+
+Container Settings:
+
+* Name: `nginx-container`
+* Image:
+
+  ```
+  526888234336.dkr.ecr.us-east-1.amazonaws.com/ecs-demo:latest
+  ```
+* Port: **80**
+
+Create.
+
+---
+
+# **10 — Create ECS Service**
+
+Cluster → Create Service
+
+* Launch Type: Fargate
+* Service Name: `nginx-service`
+* Tasks: 1
+
+Networking:
+
+* Select VPC
+* Select **public subnets**
+* Auto-assign public IP → **ENABLE**
+
+Create service.
+
+---
+
+# **11 — Verify Deployment**
+
+1. Go to ECS → Cluster → Tasks
+2. Task status: **RUNNING**
+3. Check **Public IP**
+4. Open in browser:
 
 ```
 http://<public-ip>
 ```
 
-You should see:
-**"Hello from ECS!"**
-
-🎉 Congratulations! Your app is successfully deployed on AWS ECS.
+You should see the **NGINX Welcome Page** 🎉
 
 ---
+
+# **Troubleshooting**
+
+### **Error: unknown flag: --shyamdev**
+
+Cause: Wrong docker login command
+Fix: Always use
+
+```bash
+--username AWS --password-stdin
+```
+
+### **Error: An image does not exist locally**
+
+Cause: You didn’t tag local image
+Fix:
+
+```bash
+docker tag nginx:latest <ecr-uri>
+```
+
+### **Error: Unable to locate credentials**
+
+Fix:
+
+```bash
+aws configure
+```
+
+### **Push denied**
+
+IAM role/user missing permissions.
+
+---
+
+# **Final Flow Summary**
+
+```
+Amazon Linux → docker pull nginx → tag → ECR login → docker push → ECS (Fargate) → Public IP → NGINX page
+```
+
+---
+
+
 
