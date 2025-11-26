@@ -1,4 +1,5 @@
 # 🐳 **AWS ECS**
+![ecs GIF](ecs1.gif)
 
 A beginner-friendly, easy-to-understand explanation of **Containerization**, **Docker**, **AWS ECS**, and a **simple hands-on lab**.
 
@@ -31,6 +32,7 @@ Running instance of the Docker image.
 ---
 
 # 🟦 **2. What is AWS ECS (Elastic Container Service)?**
+![ECS GIF](ecs.gif)
 
 AWS ECS is a fully managed **container orchestration service** used to **run, manage, and scale Docker containers**.
 
